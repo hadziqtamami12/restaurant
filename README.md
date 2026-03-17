@@ -1,66 +1,112 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Restaurant API & Web Admin
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel 12 application managing restaurants and menu items with a custom API token authentication, Redis caching, and a basic Web Admin UI.
 
-## About Laravel
+## Tech Stack Used
+- PHP 8.2+
+- Laravel 12
+- MySQL 8.0
+- Redis
+- PHPUnit for feature testing
+- TailwindCSS (via CDN for Web Admin)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Design Decisions
+1. **Authentication**: Instead of Laravel Sanctum, a simple custom middleware `EnsureApiTokenIsValid` compares the incoming `Authorization: Bearer <token>` to the `API_TOKEN` environment variable. 
+2. **Caching**: Redis is used to cache the list of restaurants retrieved from `GET /api/restaurants`. Cache invalidation occurs automatically on Create, Update, or Delete operations.
+3. **Database Seeding**: Manual DB inserts without using faker were implemented to ensure precise initial state matching the requirements constraint (2 restaurants with 5 menu items each).
+4. **Validation**: Built-in Laravel request validation ensures payload integrity (e.g., specific enum values for `category`, minimum amounts for `price`).
+5. **Pagination & Searching**: Built-in Eloquent pagination and query scopes are used for robust and efficient data retrieval.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Setup Instructions (Local without Docker)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. Clone or copy this repository to your local server (e.g., Laragon/XAMPP).
+```bash
+git clone <repository_url> restaurant
+cd restaurant
+```
 
-## Learning Laravel
+2. Install dependencies:
+```bash
+composer install
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+3. Configure Environment:
+```bash
+cp .env.example .env
+```
+Update `.env` to match your local setup:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=restaurant_db
+DB_USERNAME=root
+DB_PASSWORD=
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+CACHE_STORE=redis
+REDIS_CLIENT=predis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+API_TOKEN=restaurant_secret_api_key
+```
 
-## Laravel Sponsors
+4. Prepare Database and seed:
+```bash
+# Optional helper script to create the DB if it doesn't exist
+php create_db.php 
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# Run migrations and seed the data
+php artisan migrate:fresh --seed
+```
 
-### Premium Partners
+5. Run the dev server:
+```bash
+php artisan serve
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## Setup Instructions (With Docker)
 
-## Contributing
+A `docker-compose.yml` and `Dockerfile` are provided for ease of use.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1. Update your `.env` to connect to the Docker containers instead:
+```env
+DB_HOST=db
+REDIS_HOST=redis
+```
 
-## Code of Conduct
+2. Build and run containers:
+```bash
+docker-compose up -d --build
+```
+This will start `restaurant-app` (PHP), `restaurant-webserver` (Nginx on port 8000), `restaurant-db` (MySQL on port 3306), and `restaurant-redis` (Redis on port 6379).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+3. Set up the application inside the container:
+```bash
+docker exec -it restaurant-app composer install
+docker exec -it restaurant-app php artisan key:generate
+docker exec -it restaurant-app php artisan migrate:fresh --seed
+```
 
-## Security Vulnerabilities
+The app will be accessible at `http://localhost:8000` assuming port 8000 is open.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## API Endpoints
 
-## License
+All endpoints (except Web views) require the `Authorization` header: `Bearer restaurant_secret_api_key`
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- `POST /api/restaurants` : Create a restaurant (requires `name`, `address`).
+- `GET /api/restaurants` : List all restaurants. Supports `?search=name` and `?page=N`. Cached in Redis.
+- `GET /api/restaurants/:id` : Get restaurant detail, including its menu items.
+- `PUT /api/restaurants/:id` : Update a restaurant.
+- `DELETE /api/restaurants/:id` : Delete a restaurant.
+- `POST /api/restaurants/:id/menu_items` : Add a menu item to a restaurant.
+- `GET /api/restaurants/:id/menu_items` : List menu items for a restaurant. Supports `?search=name` and `?category=type`.
+- `PUT /api/menu_items/:id` : Update a menu item.
+- `DELETE /api/menu_items/:id` : Delete a menu item.
+
+## Testing
+To run the automated test suite:
+```bash
+php artisan test
+```
